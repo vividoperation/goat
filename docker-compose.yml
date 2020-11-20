@@ -1,0 +1,88 @@
+version: '3'
+networks:
+  goat-internal:
+    driver: bridge
+  testgame-internal:
+    driver: bridge
+  platform-connection:
+    driver: bridge
+services:
+  goat-frontend:
+    build:
+      context: ./goat-frontend
+      target: run_dev
+    image: goat/goat-frontend
+    container_name: goat-frontend
+    stdin_open: true
+    networks:
+      - goat-internal
+    ports:
+      - "3000:3000"
+    env_file:
+      - goat.env
+    volumes:
+      - ./goat-frontend/src:/app/src
+      - ./goat-frontend/public:/app/public
+
+  goat-backend:
+    build:
+      context: ./goat-backend
+    image: goat/goat-backend
+    container_name: goat-backend
+    ports:
+      - "8080:8080"
+    networks:
+      - goat-internal
+      - platform-connection
+    env_file:
+      - goat.env
+    depends_on:
+      - goat-database
+
+  goat-database:
+    build:
+      context: ./goat-database
+      target: seed_db
+    image: goat/goat-database
+    container_name: goat-database
+    networks:
+      - goat-internal
+    env_file:
+      - goat.env
+
+  testgame-frontend:
+    build:
+      context: ./testgame/frontend
+      target: run_dev
+    image: goat/testgame/frontend
+    container_name: testgame-frontend
+    stdin_open: true
+    networks:
+      - testgame-internal
+    ports:
+      - "5000:3000"
+    env_file:
+      - ./testgame/.env
+    volumes:
+      - ./testgame/frontend/src:/app/src
+      - ./testgame/frontend/public:/app/public
+
+  testgame-backend:
+    build:
+      context: ./testgame/backend
+    image: goat/testgame/backend
+    container_name: testgame-backend
+    ports:
+      - "8081:8081"
+    networks:
+      - testgame-internal
+      - platform-connection
+    env_file:
+      - ./testgame/.env
+
+  testgame-redis:
+    image:
+      redis
+    container_name: testgame-redis
+    networks:
+      - testgame-internal

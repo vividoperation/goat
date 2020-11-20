@@ -1,0 +1,52 @@
+pipeline {
+  environment {
+    DockerImageName = "testgame-frontend"
+    DockerRepository = "mikemiller813/goat/"
+    GithubCredential = 'cbpodd-github'
+    DockerImage = ''
+    DockerRegistry = 'docker.pkg.github.com'
+    OldContainerID = ''
+    REACT_APP_BACKEND_ENDPOINT='http://goat.millercoding.com:8081'
+    Tag = 'latest'
+  }
+  agent any
+  stages {
+    stage('Building image') {
+      steps{
+        dir("testgame/frontend")
+        {
+          script {
+            sh "DOCKER_BUILDKIT=1 docker build . -t $DockerRepository$DockerImageName --target run_prod --build-arg REACT_APP_BACKEND_ENDPOINT=\"$REACT_APP_BACKEND_ENDPOINT\""
+          }
+        }
+      }
+    }
+    stage('Push image to Github packages') {
+      steps{
+        script {
+          docker.withRegistry( "https://$DockerRegistry", GithubCredential ) {
+            sh "docker tag $DockerRepository$DockerImageName $DockerRegistry/$DockerRepository$DockerImageName:$Tag"
+            sh "docker push $DockerRegistry/$DockerRepository$DockerImageName:$Tag"
+          }
+        }
+      }
+    }
+    stage('Remove old image if it exists') {
+      steps {
+        script {
+          OldContainerId = sh(returnStdout: true, script: "docker ps -q -f name=$DockerImageName")
+          if (OldContainerId != '') {
+            sh "docker stop $DockerImageName"
+          }
+        }
+      }
+    }
+    stage('Run Docker image') {
+      steps{
+        script {
+          sh "docker run -d --rm --name $DockerImageName -p 5000:80 $DockerRepository$DockerImageName"
+        }
+      }
+    }
+  }
+}

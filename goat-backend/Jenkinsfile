@@ -1,0 +1,53 @@
+pipeline {
+  environment {
+    DockerImageName = "goat-backend"
+    DockerRepository = "mikemiller813/goat/"
+    GithubCredential = 'cbpodd-github'
+    DockerImage = ''
+    DockerRegistry = 'https://docker.pkg.github.com'
+    OldContainerID = ''
+    POSTGRES_DB='goat'
+    POSTGRES_PASSWORD=credentials('POSTGRES_PASSWORD')
+    POSTGRES_USER=credentials('POSTGRES_USER')
+    POSTGRES_URL='goat-database:5432'
+  }
+  agent any
+  stages {
+    stage('Building image') {
+      steps{
+        dir("goat-backend")
+        {
+          script {
+            DockerImage = docker.build(DockerRepository + DockerImageName)
+          }
+        }
+      }
+    }
+    stage('Push image to Github packages') {
+      steps{
+        script {
+          docker.withRegistry( DockerRegistry, GithubCredential ) {
+            DockerImage.push("latest")
+          }
+        }
+      }
+    }
+    stage('Remove old image if it exists') {
+      steps {
+        script {
+          OldContainerId = sh(returnStdout: true, script: "docker ps -q -f name=$DockerImageName")
+          if (OldContainerId != '') {
+            sh "docker stop $DockerImageName"
+          }
+        }
+      }
+    }
+    stage('Run Docker image') {
+      steps{
+        script {
+          DockerImage.run("--rm --network goat-internal --network-alias goat-backend -e POSTGRES_URL=\"$POSTGRES_URL\" -e POSTGRES_USER=\"$POSTGRES_USER\" -e POSTGRES_PASSWORD=\"$POSTGRES_PASSWORD\" -e POSTGRES_DB=\"$POSTGRES_DB\" --name $DockerImageName -p 8080:8080")
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+node_modules
+README.md
+build
+.dockerignore
+Dockerfile
+Dockerfile.*
+Jenkinsfile

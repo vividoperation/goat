@@ -1,0 +1,16 @@
+:root {
+    --primary: #B02E93 !important;
+}
+
+body {
+    color: white !important;
+    background-color: #201B47 !important;
+}
+
+.bg-primary-nobootstrap {
+    background-color: #B02E93 !important;
+}
+
+.text-primary-nobootstrap {
+    color: #B02E93 !important;
+}

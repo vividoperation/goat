@@ -1,0 +1,51 @@
+pipeline {
+  environment {
+    DockerImageName = "testgame-backend"
+    DockerRepository = "mikemiller813/goat/"
+    GithubCredential = 'cbpodd-github'
+    DockerImage = ''
+    DockerRegistry = 'https://docker.pkg.github.com'
+    OldContainerID = ''
+    REDIS_URL = 'redis://testgame-redis:6379'
+    GOAT_BACKEND_ENDPOINT = "http://goat.millercoding.com:8080"
+  }
+  agent any
+  stages {
+    stage('Building image') {
+      steps{
+        dir("testgame/backend")
+        {
+          script {
+            DockerImage = docker.build(DockerRepository + DockerImageName)
+          }
+        }
+      }
+    }
+    stage('Push image to Github packages') {
+      steps{
+        script {
+          docker.withRegistry( DockerRegistry, GithubCredential ) {
+            DockerImage.push("latest")
+          }
+        }
+      }
+    }
+    stage('Remove old image if it exists') {
+      steps {
+        script {
+          OldContainerId = sh(returnStdout: true, script: "docker ps -q -f name=$DockerImageName")
+          if (OldContainerId != '') {
+            sh "docker stop $DockerImageName"
+          }
+        }
+      }
+    }
+    stage('Run Docker image') {
+      steps{
+        script {
+          DockerImage.run("--rm --network testgame-internal --network-alias testgame-backend -e GOAT_BACKEND_ENDPOINT=\"$GOAT_BACKEND_ENDPOINT\" -e REDIS_URL=\"$REDIS_URL\" --name $DockerImageName -p 8081:8081")
+        }
+      }
+    }
+  }
+}

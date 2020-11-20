@@ -1,0 +1,26 @@
+pipeline {
+  environment {
+    DockerImageName = "testgame-redis"
+    OldContainerID = ''
+  }
+  agent any
+  stages {
+    stage('Remove old image if it exists') {
+      steps {
+        script {
+          OldContainerId = sh(returnStdout: true, script: "docker ps -q -f name=$DockerImageName")
+          if (OldContainerId != '') {
+            sh "docker stop $DockerImageName"
+          }
+        }
+      }
+    }
+    stage('Run Docker image') {
+      steps{
+        script {
+          sh "docker run -d --rm --network testgame-internal --network-alias testgame-redis --name $DockerImageName redis"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+.dockerignore
+**/*/target/*
+.gitignore
+*.md
+*.yml
+Jenkinsfile
